@@ -21,10 +21,11 @@ def creat_observation():
 		state_space_list.append("lane_"+str(i)+"_mean_speed")
 		state_space_list.append("lane_"+str(i)+"_density")
 	#print(state_space_list)
+
 	state_space_low = np.array([c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE
-		,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY])
+		,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY])
 	state_space_high = np.array([c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE
-		,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY])
+		,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY])
 
 	obs = spaces.Box(low=state_space_low,high=state_space_high,dtype=np.float64)
 	return obs
@@ -44,7 +45,10 @@ class SumoEnv(gym.Env):
 		self.is_collided = False
 		assert render_mode is None or render_mode in self.metadata['render_modes']
 		self.render_mode =render_mode
-		print(self.render_mode)
+		self.min_speed_limit = c.RL_MIN_SPEED_LIMIT 
+		self.w1 = c.W1 # efficiency coefficient
+		self.w2 = c.W2 # collision coefficient
+		self.w3 = c.W3 # lane change coefficient
 
 	def _getInfo(self):
 		return {"current_episode":0}
@@ -53,10 +57,16 @@ class SumoEnv(gym.Env):
 		sumoBinary = "sumo"
 		if self.render_mode=="human":
 			sumoBinary = "sumo-gui"
-		sumoCmd = [sumoBinary, "-c", "sumo_networks/test.sumocfg","--lateral-resolution","3.8",
-		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True"]
+		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg","--lateral-resolution","3.2",
+		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length","0.5",
+		 "--random","true"]
 		traci.start(sumoCmd)
 
+	def mean_normalization(self, obs):
+		mu=np.mean(obs)
+		std = np.std(obs)
+		X = (obs-mu)/(max(obs)-min(obs))
+		return X
 	def reset(self, seed=None, options=None):
 		super().reset(seed=seed)
 		self.is_collided = False
@@ -64,7 +74,7 @@ class SumoEnv(gym.Env):
 		self._warmup()
 		obs = np.array(self.observation_space.sample())
 		info = self._getInfo()
-		return obs, info
+		return self.mean_normalization(obs), info
 
 	def _getCloseLeader(self, leaders):
 		if len(leaders) <= 0:
@@ -136,7 +146,7 @@ class SumoEnv(gym.Env):
 		elif action == 3:
 			traci.vehicle.setAcceleration(self.ego,0.2, 0.1)
 		elif action == 4:
-			traci.vehicle.setAcceleration(self.ego, -4.5, 0.1)
+			traci.vehicle.setAcceleration(self.ego, -0.2, 0.1)
 
 
 	def _collision_reward(self):
@@ -147,10 +157,10 @@ class SumoEnv(gym.Env):
 		return 0.0
 	def _efficiency(self):
 		speed = traci.vehicle.getSpeed(self.ego)
-		if speed < 25.0:
-			return (speed-25.0)/(self.max_speed_limit-25.0)
+		if speed < self.min_speed_limit:
+			return (speed-self.min_speed_limit)/(self.max_speed_limit-self.min_speed_limit)
 		if speed > self.max_speed_limit:
-			return (self.max_speed_limit-speed)/(self.max_speed_limit-25.0)
+			return (self.max_speed_limit-speed)/(self.max_speed_limit-self.min_speed_limit)
 		return speed/self.max_speed_limit
 	def _lane_change_reward(self,action):
 		if action == 1 or action == 2:
@@ -160,8 +170,8 @@ class SumoEnv(gym.Env):
 	def _reward(self, action):
 		c_reward = self._collision_reward()
 		if self.is_collided or self._isEgoRunning()==False:
-			return c_reward
-		return c_reward + self._efficiency() + self._lane_change_reward(action)
+			return c_reward*self.w2
+		return c_reward*self.w2 + self._efficiency()*self.w1 + self._lane_change_reward(action)*self.w3
 
 
 
@@ -171,9 +181,9 @@ class SumoEnv(gym.Env):
 		reward = self._reward(action)
 		observation = self._get_observation()
 		done = self.is_collided or (self._isEgoRunning()==False)
-		if done == False and traci.simulation.getTime() > 360:
+		if done == False and traci.simulation.getTime() > 720:
 			done = True
-		return (observation, reward, done, {})
+		return (self.mean_normalization(observation), reward, done, {})
 
 
 	def _isEgoRunning(self):
@@ -191,7 +201,7 @@ class SumoEnv(gym.Env):
 			v_ids_e2 = traci.edge.getLastStepVehicleIDs("E2")
 			if "av_0" in v_ids_e0 or "av_0" in v_ids_e1 or "av_0" in v_ids_e2:
 				traci.vehicle.setLaneChangeMode(self.ego,0)
-				#traci.vehicle.setSpeedMode(self.ego,0)
+				traci.vehicle.setSpeedMode(self.ego,0)
 				return True
 			traci.simulationStep()
 
@@ -202,5 +212,5 @@ class SumoEnv(gym.Env):
 	def move_gui(self):
 		if self.render_mode == "human":
 			x, y = traci.vehicle.getPosition('av_0')
-			traci.gui.setOffset("View #0",x-23.0,108.49)
+			traci.gui.setOffset("View #0",x-50.0,108.49)
 		

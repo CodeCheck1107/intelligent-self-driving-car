@@ -1006,6 +1006,6 @@
         <view3D show3DTLSLinkMarkers="1" show3DTLSDomes="1" generate3DTLSModels="0" ambient3DLight="32,32,32" diffuse3DLight="64,64,64"/>
         <legend showSizeLegend="1" showColorLegend="0" showVehicleColorLegend="0"/>
     </scheme>
-    <viewport zoom="1083.47" x="23.06" y="108.49" angle="0.00"/>
-    <delay value="300.00"/>
+    <viewport zoom="1083.47" x="-50.06" y="108.49" angle="0.00"/>
+    <delay value="0.00"/>
 </viewsettings>
