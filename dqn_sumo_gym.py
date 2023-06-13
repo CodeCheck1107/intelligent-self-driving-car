@@ -85,7 +85,7 @@ class DQN(nn.Module):
 
 class Agent(object):
 	"""docstring for Agent"""
-	def __init__(self, arg, hp):
+	def __init__(self, arg, hp=""):
 		super(Agent, self).__init__()
 		self.arg = arg
 		self.batch_size = 64
@@ -175,15 +175,17 @@ class Agent(object):
 
 	def train_RL(self, env):
 		max_reward = 0.0
-		for e in range(300):
+		for e in range(1000):
 			state, info = env.reset()
 			r_r = 0
+			time_loss_e = 0
 			state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 			for t in count():
 				#env.render()
 				action = self.select_action(state)
-				observation, reward, terminated, _ = env.step(action.item())
+				observation, reward, terminated, time_loss, _ = env.step(action.item())
 				r_r += reward
+				time_loss_e += time_loss
 				if reward == -10:
 					print(f'Collision: {reward}')
 				reward = torch.tensor([reward], device=device)
@@ -209,6 +211,7 @@ class Agent(object):
 				max_reward = r_r
 			self.writter.add_scalar("Loss/train", self.episodic_loss, (e+1))
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
+			self.writter.add_scalar("TimeLoss/Train", time_loss_e, (e+1))
 			self.writter.flush()
 			self.episodic_loss = 0.0
 		#env.closeEnvConnection()
