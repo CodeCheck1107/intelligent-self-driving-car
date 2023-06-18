@@ -34,10 +34,11 @@ def creat_observation():
 class SumoEnv(gym.Env):
 	"""docstring for SumoEnv"""
 	metadata = {"render_modes": ["", "human", "rgb_array"], "render_fps": 4}
-	def __init__(self,render_mode=None):
+	def __init__(self,seed="123456",render_mode=None):
 		super(SumoEnv, self).__init__()
 		self.action_space = spaces.Discrete(5)
 		self.observation_space = creat_observation()
+		self.seed = seed
 
 		## class variable
 		self.ego = c.EGO_ID
@@ -60,7 +61,7 @@ class SumoEnv(gym.Env):
 			sumoBinary = "sumo-gui"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length","0.5",
-		 "--random","true"]
+		 "--seed",self.seed]
 		traci.start(sumoCmd)
 
 	def mean_normalization(self, obs):
@@ -190,7 +191,7 @@ class SumoEnv(gym.Env):
 		done = self.is_collided or (self._isEgoRunning()==False)
 		if done == False and traci.simulation.getTime() > 720:
 			done = True
-		return (self.mean_normalization(observation), reward, done, time_loss, {})
+		return (self.mean_normalization(observation), reward, done, {})
 
 
 	def _isEgoRunning(self):

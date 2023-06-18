@@ -23,7 +23,7 @@ class DQNAgent(object):
 	if platform.system() == "Windows":
 		device = 'cuda'if torch.cuda.is_available() else 'cpu'
 
-	def __init__(self):
+	def __init__(self, process=""):
 		super(DQNAgent, self).__init__()
 		self.memory = ReplayBuffer(MEMORY_SIZE)
 		self.policy_net = DqnNetwork().to(self.device)
@@ -31,7 +31,8 @@ class DQNAgent(object):
 		self.target_net.load_state_dict(self.policy_net.state_dict())
 		self.epsilon_threshold = EPSILON
 
-		self.writter = SummaryWriter(comment="")
+		self.writter = SummaryWriter(comment="On_process_"+process)
+		self.ep_loss = 0.0
 
 		self.optimizer = optim.Adam(self.policy_net.parameters(), lr=LEARNING_RATE)
 		random.seed(SEED)
@@ -71,6 +72,7 @@ class DQNAgent(object):
 		criterion = torch.nn.SmoothL1Loss()
 		loss = criterion(q_values, target_q_values)
 		# update network
+		self.ep_loss += loss
 		self.optimizer.zero_grad()
 		loss.backward()
 		self.optimizer.step()
@@ -94,7 +96,7 @@ class DQNAgent(object):
 			r_r = 0
 			for t in count():
 				action = self.get_action(state)
-				next_state, reward, done, time_loss, _ = env.step(action)
+				next_state, reward, done, _ = env.step(action)
 				done_mask = 0.0 if done else 1.0
 				self.memory.add_experience(state,action,reward/10.0,next_state,done)
 				if done:
@@ -108,6 +110,8 @@ class DQNAgent(object):
 			self.reduce_exploration()
 			print(f'Episode: {e+1}/{self.epsilon_threshold}')
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
+			self.writter.add_scalar("Loss/Train", self.ep_loss, (e+1))
+			self.ep_loss = 0.0
 			env.closeEnvConnection()
 
 
