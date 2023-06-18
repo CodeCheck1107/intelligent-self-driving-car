@@ -89,14 +89,14 @@ class DQNAgent(object):
 
 	def train_RL(self, env):
 		max_reward = 0.0
-		for e in tqdm(range(500),colour="red"):
+		for e in tqdm(range(1000),colour="red"):
 			state, info = env.reset()
 			r_r = 0
 			for t in count():
 				action = self.get_action(state)
 				next_state, reward, done, time_loss, _ = env.step(action)
 				done_mask = 0.0 if done else 1.0
-				self.memory.add_experience(state,action,reward/100.0,next_state,done)
+				self.memory.add_experience(state,action,reward/10.0,next_state,done)
 				if done:
 					break
 				state = next_state

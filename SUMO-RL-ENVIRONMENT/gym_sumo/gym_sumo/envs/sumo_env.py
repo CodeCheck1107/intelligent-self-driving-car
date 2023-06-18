@@ -58,7 +58,7 @@ class SumoEnv(gym.Env):
 		sumoBinary = "sumo"
 		if self.render_mode=="human":
 			sumoBinary = "sumo-gui"
-		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg","--lateral-resolution","3.2",
+		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length","0.5",
 		 "--random","true"]
 		traci.start(sumoCmd)
@@ -162,7 +162,7 @@ class SumoEnv(gym.Env):
 			return (speed-self.min_speed_limit)/(self.max_speed_limit-self.min_speed_limit)
 		if speed > self.max_speed_limit:
 			return (self.max_speed_limit-speed)/(self.max_speed_limit-self.min_speed_limit)
-		return math.log(self.max_speed_limit-speed)
+		return speed/self.max_speed_limit
 	def _lane_change_reward(self,action):
 		if action == 1 or action == 2:
 			return -1.0
