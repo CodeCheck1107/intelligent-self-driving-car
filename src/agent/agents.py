@@ -30,7 +30,6 @@ class DQNAgent(object):
 		self.target_net = DqnNetwork().to(self.device)
 		self.target_net.load_state_dict(self.policy_net.state_dict())
 		self.epsilon_threshold = EPSILON
-
 		self.writter = SummaryWriter(comment="On_process_"+process)
 		self.ep_loss = 0.0
 
@@ -71,6 +70,7 @@ class DQNAgent(object):
 		target_q_values = rewards + GAMMA*q_target_max*dones
 		criterion = torch.nn.SmoothL1Loss()
 		loss = criterion(q_values, target_q_values)
+		self.ep_loss += loss
 		# update network
 		self.ep_loss += loss
 		self.optimizer.zero_grad()

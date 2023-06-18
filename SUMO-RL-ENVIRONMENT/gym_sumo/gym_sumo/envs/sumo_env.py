@@ -61,7 +61,7 @@ class SumoEnv(gym.Env):
 			sumoBinary = "sumo-gui"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length","0.5",
-		 "--seed",self.seed]
+		 "--random","true"]
 		traci.start(sumoCmd)
 
 	def mean_normalization(self, obs):
