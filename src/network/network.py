@@ -10,11 +10,9 @@ class DqnNetwork(nn.Module):
 		self.n_observations = N_OBSERVATION
 		self.n_actions = N_ACTION
 
-		self.ln1 = nn.Linear(self.n_observations, 256)
-		self.ln2 = nn.Linear(256,16)
-		self.lout = nn.Linear(16, self.n_actions)
-		self.optimizer = optim.Adam(self.parameters(), lr=LEARNING_RATE)
-		self.loss = nn.MSELoss()
+		self.ln1 = nn.Linear(self.n_observations, 64)
+		self.ln2 = nn.Linear(64,32)
+		self.lout = nn.Linear(32, self.n_actions)
 
 	def forward(self, x):
 		x = F.relu(self.ln1(x))

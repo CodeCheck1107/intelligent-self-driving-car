@@ -9,6 +9,6 @@ MAX_LANE_DENSITY = 100 #this is an assumption for the traffic
 
 EGO_ID = "av_0"
 
-W1 = 0.01 # efficiency Reward
-W2 = 0.001 # Collision reward
-W3 = 0.01 # lane change Reward
+W1 = 0.001 # efficiency Reward
+W2 = 0.01 # Collision reward
+W3 = 0.1 # lane change Reward

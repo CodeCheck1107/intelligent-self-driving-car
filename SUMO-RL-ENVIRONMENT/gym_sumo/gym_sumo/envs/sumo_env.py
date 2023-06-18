@@ -60,7 +60,7 @@ class SumoEnv(gym.Env):
 			sumoBinary = "sumo-gui"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg","--lateral-resolution","3.2",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length","0.5",
-		 "--random","true","--collision.action","none"]
+		 "--random","true"]
 		traci.start(sumoCmd)
 
 	def mean_normalization(self, obs):
@@ -140,14 +140,14 @@ class SumoEnv(gym.Env):
 			pass
 		elif action == 1:
 			target_lane_index = min(current_lane_index+1, self.num_of_lanes-1)
-			traci.vehicle.changeLane(self.ego, target_lane_index, 0.1)
+			traci.vehicle.changeLane(self.ego, target_lane_index, 0.2)
 		elif action == 2:
 			target_lane_index = max(current_lane_index-1, 0)
-			traci.vehicle.changeLane(self.ego, target_lane_index, 0.1)
+			traci.vehicle.changeLane(self.ego, target_lane_index, 0.2)
 		elif action == 3:
-			traci.vehicle.setAcceleration(self.ego,0.2, 0.1)
+			traci.vehicle.setAcceleration(self.ego,0.2, 0.2)
 		elif action == 4:
-			traci.vehicle.setAcceleration(self.ego, -0.2, 0.1)
+			traci.vehicle.setAcceleration(self.ego, -0.2, 0.2)
 
 
 	def _collision_reward(self):
@@ -187,8 +187,7 @@ class SumoEnv(gym.Env):
 		reward = self._reward(action)
 		observation = self._get_observation()
 		time_loss = self.time_loss_reward()
-		done = False # self.is_collided or (self._isEgoRunning()==False)
-		done = (self._isEgoRunning()==False)
+		done = self.is_collided or (self._isEgoRunning()==False)
 		if done == False and traci.simulation.getTime() > 720:
 			done = True
 		return (self.mean_normalization(observation), reward, done, time_loss, {})

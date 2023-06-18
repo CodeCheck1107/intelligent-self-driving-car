@@ -124,7 +124,6 @@ class Agent(object):
 			return torch.tensor([[np.random.choice(self.n_actions)]], device= device,dtype=torch.long)
 
 
-	def append_sample(self,)
 	def learn_model(self):
 		if len(self.memory) < self.batch_size:
 			return

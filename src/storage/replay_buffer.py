@@ -8,15 +8,15 @@ class ReplayBuffer(object):
 		super(ReplayBuffer, self).__init__()
 		self.capacity = capacity
 
-		self.states = np.zeros((capacity, N_OBSERVATION), dtype=np.float32)
-		self.actions = np.zeros(capacity, dtype=np.int64)
-		self.rewards = np.zeros(capacity, dtype=np.float32)
-		self.next_states = np.zeros((capacity, N_OBSERVATION),dtype=np.float32)
-		self.dones = np.zeros(capacity, dtype=np.bool)
+		self.states = np.zeros([capacity, N_OBSERVATION], dtype=np.float32)
+		self.actions = np.zeros([capacity], dtype=np.float32)
+		self.rewards = np.zeros([capacity], dtype=np.float32)
+		self.next_states = np.zeros([capacity, N_OBSERVATION],dtype=np.float32)
+		self.dones = np.zeros(capacity, dtype=np.float32)
 
 
 	def add_experience(self, state, action, reward, next_state, done):
-		cur_mem_index = self.mem_counter % self.capacity
+		cur_mem_index = (self.mem_counter+1) % self.capacity
 		self.states[cur_mem_index] = state
 		self.actions[cur_mem_index] = action
 		self.rewards[cur_mem_index] = reward
@@ -27,7 +27,7 @@ class ReplayBuffer(object):
 
 	def sample_experience(self):
 		max_size = min(self.mem_counter, self.capacity)
-		batch_indices = np.random.choice(max_size, BATCH_SIZE, replace=True)
+		batch_indices = np.random.choice(max_size, size=BATCH_SIZE, replace=False)
 
 		states = self.states[batch_indices]
 		actions = self.actions[batch_indices]
@@ -36,4 +36,7 @@ class ReplayBuffer(object):
 		dones = self.dones[batch_indices]
 
 		return (states, actions, rewards, next_states, dones)
+
+	def __len__(self):
+		return self.mem_counter
 
