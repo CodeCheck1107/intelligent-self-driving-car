@@ -60,7 +60,7 @@ class SumoEnv(gym.Env):
 		if self.render_mode=="human":
 			sumoBinary = "sumo-gui"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg",
-		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length",str(C.STEP_LENGTH),
+		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length",str(c.STEP_LENGTH),
 		 "--random","true"]
 		traci.start(sumoCmd)
 
@@ -155,7 +155,7 @@ class SumoEnv(gym.Env):
 		collide_vehicles = traci.simulation.getCollidingVehiclesIDList()
 		if self.ego in collide_vehicles:
 			self.is_collided = True
-			return -10
+			return -100
 		return 0.0
 	def _efficiency(self):
 		speed = traci.vehicle.getSpeed(self.ego)
@@ -176,6 +176,7 @@ class SumoEnv(gym.Env):
 
 	def _reward(self, action):
 		c_reward = self._collision_reward()
+		print(f'collision Reward: {c_reward}')
 		if self.is_collided or self._isEgoRunning()==False:
 			return c_reward*self.w2
 		return c_reward*self.w2 + self._efficiency()*self.w1 + self._lane_change_reward(action)*self.w3

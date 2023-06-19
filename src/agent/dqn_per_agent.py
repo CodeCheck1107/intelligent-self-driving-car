@@ -119,12 +119,12 @@ class DQNPERAgent(object):
 				action = self.get_action(state)
 				next_state, reward, done, _ = env.step(action)
 				done_mask = 0.0 if done else 1.0
+				r_r += reward
 				self.add_sample(state,action,reward,next_state,done_mask)
 				if done:
 					print(f'Done: {done}')
 					break
 				state = next_state
-				r_r += reward
 				self.learn_policy()
 				env.move_gui()
 			if (e+1)%TARGET_NET_UPDATE_FRE == 0:
