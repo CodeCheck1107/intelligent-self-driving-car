@@ -31,7 +31,7 @@ class DQNPERAgent(object):
 		self.target_net = DqnNetwork().to(self.device)
 		self.target_net.load_state_dict(self.policy_net.state_dict())
 		self.epsilon_threshold = EPSILON
-		self.writter = SummaryWriter(comment="On_process_"+process)
+		self.writter = SummaryWriter(comment="PER_REPLAY"+process)
 		self.ep_loss = 0.0
 
 		self.optimizer = optim.Adam(self.policy_net.parameters(), lr=LEARNING_RATE)
@@ -119,7 +119,7 @@ class DQNPERAgent(object):
 				action = self.get_action(state)
 				next_state, reward, done, _ = env.step(action)
 				done_mask = 0.0 if done else 1.0
-				self.add_sample(state,action,reward/10.0,next_state,done_mask)
+				self.add_sample(state,action,reward,next_state,done_mask)
 				if done:
 					print(f'Done: {done}')
 					break
@@ -130,7 +130,7 @@ class DQNPERAgent(object):
 			if (e+1)%TARGET_NET_UPDATE_FRE == 0:
 				self.update_target_network()
 			self.reduce_exploration()
-			print(f'Episode: {e+1}/{self.epsilon_threshold}')
+			print(f'Episode: {e+1}/{self.epsilon_threshold} -> Reward: {r_r}')
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
 			self.writter.add_scalar("Loss/Train", self.ep_loss, (e+1))
 			self.ep_loss = 0.0

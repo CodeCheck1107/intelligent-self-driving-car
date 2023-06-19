@@ -12,3 +12,6 @@ EGO_ID = "av_0"
 W1 = 0.001 # efficiency Reward
 W2 = 1.0 # Collision reward
 W3 = 0.1 # lane change Reward
+
+# SIMULATION STEP
+STEP_LENGTH=0.2

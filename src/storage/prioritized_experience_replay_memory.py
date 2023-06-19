@@ -8,7 +8,7 @@ from src.storage.sum_tree import SumTree
 class PER(object):
 	"""docstring for PER"""
 	e = 0.01
-	a = 0.6
+	a = 0.9
 	beta = 0.4
 	beta_increment_per_sampling=0.001
 
