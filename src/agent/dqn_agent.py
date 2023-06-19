@@ -28,9 +28,10 @@ class DQNAgent(object):
 		self.memory = ReplayBuffer(MEMORY_SIZE)
 		self.policy_net = DqnNetwork().to(self.device)
 		self.target_net = DqnNetwork().to(self.device)
+		self.target_net.eval() # set target for evaluation mode
 		self.target_net.load_state_dict(self.policy_net.state_dict())
 		self.epsilon_threshold = EPSILON
-		self.writter = SummaryWriter(comment="On_process_"+process)
+		self.writter = SummaryWriter(comment="DQN_"+process)
 		self.ep_loss = 0.0
 
 		self.optimizer = optim.Adam(self.policy_net.parameters(), lr=LEARNING_RATE)
@@ -48,11 +49,14 @@ class DQNAgent(object):
 				return np.random.choice(N_ACTION)
 			else:
 				state = torch.FloatTensor(observation).to(self.device)
-				action  = self.policy_net(state).argmax().item()
+				with torch.inference_mode():
+					action  = self.policy_net(state).argmax().item()
 				return action
 		else:
 			state = torch.FloatTensor(observation).to(self.device)
-			return self.policy_net(state).argmax().item()
+			with torch.inference_mode():
+				action  = self.policy_net(state).argmax().item()
+			return action
 
 
 	def learn_policy(self):
@@ -66,7 +70,8 @@ class DQNAgent(object):
 		dones = torch.FloatTensor(dones.reshape(-1,1)).to(self.device)
 
 		q_values = self.policy_net(states).gather(1,actions)
-		q_target_max = self.target_net(next_states).max(1)[0].unsqueeze(1).detach()
+		with torch.inference_mode():
+			q_target_max = self.target_net(next_states).max(1)[0].unsqueeze(1).detach()
 		target_q_values = rewards + GAMMA*q_target_max*dones
 		criterion = torch.nn.SmoothL1Loss()
 		loss = criterion(q_values, target_q_values)

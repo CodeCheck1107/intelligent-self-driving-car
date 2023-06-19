@@ -5,10 +5,10 @@ MEMORY_SIZE = 50000
 
 
 # seed for reproducibility
-SEED = 1
+SEED = 0
 
 # Hyperparameters
-BATCH_SIZE = 24
+BATCH_SIZE = 32
 GAMMA = 0.99
 EPSILON = 1.0
 EPSILON_END = 0.01
