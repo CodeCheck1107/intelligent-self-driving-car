@@ -10,11 +10,11 @@ class DqnNetwork(nn.Module):
 		self.n_observations = N_OBSERVATION
 		self.n_actions = N_ACTION
 
-		self.ln1 = nn.Linear(self.n_observations, 128)
-		self.ln2 = nn.Linear(128,256)
-		self.ln3 = nn.Linear(256,128)
-		self.ln4 = nn.Linear(128,32)
-		self.lout = nn.Linear(32, self.n_actions)
+		self.ln1 = nn.Linear(self.n_observations, 512)
+		self.ln2 = nn.Linear(512,1024)
+		self.ln3 = nn.Linear(1024,2048)
+		self.ln4 = nn.Linear(2048,1024)
+		self.lout = nn.Linear(1024, self.n_actions)
 
 	def forward(self, x):
 		x = F.relu(self.ln1(x))

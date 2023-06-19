@@ -2,10 +2,9 @@ import gym
 import gym_sumo
 
 from src.agent.dqn_agent import DQNAgent
-from src.agent.dqn_per_agent import DQNPERAgent
 def mul_proc_training(process):
 	agent = DQNPERAgent(process)
-	env = gym.make("sumo-v0", seed="12454"+str(process), render_mode="human")
+	env = gym.make("sumo-v0", seed="12454"+str(process), render_mode="")
 	agent.train_RL(env) # for training
 
 import multiprocessing as mp

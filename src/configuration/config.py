@@ -1,14 +1,14 @@
 N_OBSERVATION = 21
 N_ACTION = 5
-MEMORY_SIZE = 50000
+MEMORY_SIZE = 500000
 
 
 
 # seed for reproducibility
-SEED = 1
+SEED = 0
 
 # Hyperparameters
-BATCH_SIZE = 24
+BATCH_SIZE = 2048
 GAMMA = 0.99
 EPSILON = 1.0
 EPSILON_END = 0.01
