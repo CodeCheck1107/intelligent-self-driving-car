@@ -1,6 +1,8 @@
+# Source: https://github.com/rlcode/per/blob/master/cartpole_per.py
+
 import random
 import numpy as np
-from sum_tree import SumTree
+from src.storage.sum_tree import SumTree
 
 
 class PER(object):
@@ -15,7 +17,8 @@ class PER(object):
 		self.capacity = capacity
 		self.tree = SumTree(capacity)
 
-
+	def get_mem_size(self):
+		return self.tree.n_entries
 	def _get_priority(self,error):
 		return (np.abs(error)+self.e)**self.a
 
@@ -24,7 +27,7 @@ class PER(object):
 		p = self._get_priority(error)
 		self.tree.add(p, sample)
 
-	def sample(self, n):
+	def sample_experience(self, n):
 		batch = []
 		idxs = []
 		segment = self.tree.total()/n

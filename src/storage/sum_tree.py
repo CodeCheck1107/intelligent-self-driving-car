@@ -49,7 +49,7 @@ class SumTree(object):
 
 	# update priority
 	def update(self, idx, priority):
-		change = priority=self.tree[idx]
+		change = priority-self.tree[idx]
 		self.tree[idx] = priority
 		self._propagate(idx, change)
 
@@ -57,5 +57,6 @@ class SumTree(object):
 
 	def get(self, s):
 		idx = self._retrieve(0, s)
-		dataIdx = idx-self.capacity-1
+		dataIdx = idx-self.capacity+1
+		#print(f'Data Index: {dataIdx},   {self.data[dataIdx]}')
 		return (idx, self.tree[idx],self.data[dataIdx])

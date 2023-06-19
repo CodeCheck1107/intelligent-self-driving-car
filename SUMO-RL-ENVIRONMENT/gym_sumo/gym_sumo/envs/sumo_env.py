@@ -189,7 +189,7 @@ class SumoEnv(gym.Env):
 		observation = self._get_observation()
 		time_loss = self.time_loss_reward()
 		done = self.is_collided or (self._isEgoRunning()==False)
-		if done == False and traci.simulation.getTime() > 720:
+		if traci.simulation.getTime() > 720:
 			done = True
 		return (self.mean_normalization(observation), reward, done, {})
 
