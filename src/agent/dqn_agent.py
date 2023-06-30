@@ -96,7 +96,7 @@ class DQNAgent(object):
 
 	def train_RL(self, env):
 		max_reward = 0.0
-		for e in tqdm(range(1000),colour="red"):
+		for e in tqdm(range(300),colour="red"):
 			state, info = env.reset()
 			r_r = 0
 			for t in count():

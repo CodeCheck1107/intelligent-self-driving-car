@@ -10,7 +10,7 @@ from itertools import count
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-torch.manual_seed(45)
+torch.manual_seed(0)
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -38,8 +38,8 @@ if platform.system() == "Windows":
 Transition = namedtuple('Transition', ('state','action','next_state','reward'))
 
 step_done = 0
-random.seed(45)
-np.random.seed(45)
+random.seed(0)
+np.random.seed(0)
 
 class ReplayMemory(object):
 	"""docstring for ReplayMemory"""
@@ -61,14 +61,14 @@ class DQN(nn.Module):
 
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations,16)
-        self.layer2 = nn.Linear(16, 16)
+        self.layer1 = nn.Linear(n_observations,256)
+        self.layer2 = nn.Linear(256, 256)
         # self.layer3 = nn.Linear(32, 64)
         # self.layer4 = nn.Linear(64, 128)
         # self.layer5 = nn.Linear(128, 64)
         # self.layer6 = nn.Linear(64, 32)
-        #self.layer7 = nn.Linear(32,16)
-        self.layer8 = nn.Linear(16,n_actions) 
+        #self.layer7 = nn.Linear(32,256)
+        self.layer8 = nn.Linear(256,n_actions) 
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -92,11 +92,11 @@ class Agent(object):
 		self.gamma = 0.99
 		self.eps_start = 1.0
 		self.eps_end = 0.1
-		self.eps_decay = 100000
-		self.tau = 10#0.5 # update after 30 episodes
-		self.lr = 0.001
+		self.eps_decay = 30000
+		self.tau = 5#0.5 # update after 30 episodes
+		self.lr = 3e-5
 		self.n_actions = 5
-		self.n_observations = 21
+		self.n_observations = 22
 		self.writter = SummaryWriter(comment=str(hp))
 		self.episodic_loss = 0
 		self.episode_durations = []
@@ -104,13 +104,13 @@ class Agent(object):
 		# create network
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
 		self.target_net = DQN(self.n_observations,self.n_actions).to(device)
-		self.policy_net.eval()
+		self.policy_net.train()
 		self.target_net.load_state_dict(self.policy_net.state_dict())
-		self.target_net.eval()
+		self.target_net.train()
 
 		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=0.01, momentum=0.9)
 		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
-		self.memory = ReplayMemory(30000)
+		self.memory = ReplayMemory(200000)
 
 	def load_model(self, PATH):
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
@@ -119,21 +119,21 @@ class Agent(object):
 
 	def select_action(self,state, evaluation=False):
 		global step_done
-		sample = random.random()
+		sample_threshold = random.random()
 		#print(f'Step: {step_done}')
 		eps_threshold = self.eps_end + (self.eps_start-self.eps_end)*math.exp(-1.*step_done/self.eps_decay)
 		step_done += 1
-
 		if evaluation:
 			with torch.no_grad():
 				return self.policy_net(state).max(1)[1].view(1,1)
 
-
-		if sample > eps_threshold:
+		if sample_threshold <= eps_threshold and eps_threshold > self.eps_end:
+			#print(f'Random')
+			return torch.tensor([[np.random.choice(self.n_actions)]], device= device,dtype=torch.long)
+		else:
+			#print('Deterministic')
 			with torch.no_grad():
 				return self.policy_net(state).max(1)[1].view(1,1)
-		else:
-			return torch.tensor([[np.random.choice(self.n_actions)]], device= device,dtype=torch.long)
 
 
 	def learn_model(self):
@@ -152,13 +152,13 @@ class Agent(object):
 		reward_batch = torch.cat(batch.reward)
 		state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 		next_state_values = torch.zeros(self.batch_size, device=device)
+		self.optimizer.zero_grad()
 		with torch.no_grad():
 			next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0]
 		expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 		criterion = nn.SmoothL1Loss()
 		loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 		self.episodic_loss += loss
-		self.optimizer.zero_grad()
 		loss.backward()
 		#torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
 		self.optimizer.step()
@@ -175,7 +175,7 @@ class Agent(object):
 
 	def train_RL(self, env):
 		max_reward = 0.0
-		for e in range(1000):
+		for e in range(20000):
 			state, info = env.reset()
 			r_r = 0
 			time_loss_e = 0
@@ -183,12 +183,9 @@ class Agent(object):
 			for t in count():
 				#env.render()
 				action = self.select_action(state)
-				observation, reward, terminated, time_loss, _ = env.step(action.item())
+				observation, reward, terminated, _ = env.step(action.item())
 				r_r += reward
-				time_loss_e += time_loss
-				if reward == -10:
-					print(f'Collision: {reward}')
-				reward = torch.tensor([reward], device=device)
+				reward = torch.tensor([reward/10.0], device=device) # normalized reward between -1.0 to 1.0
 				done = terminated
 				if terminated:
 					next_state = None
@@ -211,7 +208,7 @@ class Agent(object):
 				max_reward = r_r
 			self.writter.add_scalar("Loss/train", self.episodic_loss, (e+1))
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
-			self.writter.add_scalar("TimeLoss/Train", time_loss_e, (e+1))
+			#self.writter.add_scalar("TimeLoss/Train", time_loss_e, (e+1))
 			self.writter.flush()
 			self.episodic_loss = 0.0
 		#env.closeEnvConnection()
@@ -227,7 +224,7 @@ class Agent(object):
 			for t in count():
 				#env.render()
 				action = self.select_action(state)
-				observation, reward, terminated, _ = env.step(action.item())
+				observation, reward, terminated, _, _ = env.step(action.item())
 				r_r += reward
 				print(f'reward: {reward}')
 				reward = torch.tensor([reward], device=device)

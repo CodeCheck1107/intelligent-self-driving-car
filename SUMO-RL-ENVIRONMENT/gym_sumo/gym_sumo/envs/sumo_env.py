@@ -14,7 +14,8 @@ else:
 import traci
 import sumolib
 ## add each lane density and mean_speed ##
-
+state_space_high_for_norm = np.array([c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.HEADING_ANGLE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE
+		,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY])
 def creat_observation():
 	state_space_list = ['ego_speed','ego_acc','ego_dis_to_leader','leader_speed','leader_acc','dis_to_left_leader','left_leader_speed','left_leader_acc',
 	'dis_to_right_leader','right_leader_speed','right_leader_acc']
@@ -23,9 +24,9 @@ def creat_observation():
 		state_space_list.append("lane_"+str(i)+"_density")
 	#print(state_space_list)
 
-	state_space_low = np.array([c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE
+	state_space_low = np.array([c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.HEADING_ANGLE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE,-c.RL_SENSING_RADIUS,c.RL_MIN_SPEED_LIMIT,-c.RL_DCE_RANGE
 		,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY,c.RL_MIN_SPEED_LIMIT,c.MIN_LANE_DENSITY])
-	state_space_high = np.array([c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE
+	state_space_high = np.array([c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.HEADING_ANGLE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE,c.RL_SENSING_RADIUS,c.RL_MAX_SPEED_LIMIT,c.RL_ACC_RANGE
 		,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY,c.RL_MAX_SPEED_LIMIT,c.MAX_LANE_DENSITY])
 
 	obs = spaces.Box(low=state_space_low,high=state_space_high,dtype=np.float64)
@@ -61,20 +62,23 @@ class SumoEnv(gym.Env):
 			sumoBinary = "sumo-gui"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg","--lateral-resolution","3.2",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length",str(c.STEP_LENGTH),
-		 "--random","true"]
+		 "--random","false"]
 		traci.start(sumoCmd)
 
 	def mean_normalization(self, obs):
-		mu=np.mean(obs)
-		std = np.std(obs)
-		X = (obs-mu)/(max(obs)-min(obs))
+		#print(obs)
+		return obs
+		#print(f'After Normalization: {obs/state_space_high_for_norm}')
+		# mu=np.mean(obs)
+		# std = np.std(obs)
+		# X = (obs-mu)/(max(obs)-min(obs))
 		return X
 	def reset(self, seed=None, options=None):
 		super().reset(seed=seed)
 		self.is_collided = False
 		self._startSumo()
 		self._warmup()
-		obs = np.array(self.observation_space.sample())
+		obs = np.array(self.observation_space.sample()/state_space_high_for_norm)
 		info = self._getInfo()
 		return self.mean_normalization(obs), info
 
@@ -105,29 +109,30 @@ class SumoEnv(gym.Env):
 		if self._isEgoRunning()==False:
 			return self._get_rand_obs()
 
-		ego_speed = traci.vehicle.getSpeed(self.ego)
-		ego_accleration = traci.vehicle.getAccel(self.ego)
+		ego_speed = traci.vehicle.getSpeed(self.ego)/c.RL_MAX_SPEED_LIMIT
+		ego_accleration = traci.vehicle.getAccel(self.ego)/c.RL_ACC_RANGE
 		ego_leader = traci.vehicle.getLeader(self.ego)
+		ego_heading_angle= (traci.vehicle.getAngle(self.ego)-90.0)/c.HEADING_ANGLE
 		if ego_leader is not None:
 			leader_id, distance = ego_leader
 		else:
 			leader_id, distance = "", -1
-		l_speed = traci.vehicle.getSpeed(leader_id) if leader_id != "" else 0.01
-		l_acc = traci.vehicle.getAccel(leader_id) if leader_id != "" else -2.6
-		left_leader, left_l_dis = self._getCloseLeader(traci.vehicle.getLeftLeaders(self.ego, blockingOnly=True))
-		left_l_speed = traci.vehicle.getSpeed(left_leader) if left_leader != "" else 0.01
-		left_l_acc = traci.vehicle.getAccel(left_leader) if left_leader != "" else -2.6
+		l_speed = traci.vehicle.getSpeed(leader_id)/c.NON_RL_VEH_MAX_SPEED if leader_id != "" else 0.01/c.NON_RL_VEH_MAX_SPEED
+		l_acc = traci.vehicle.getAccel(leader_id)/c.RL_ACC_RANGE if leader_id != "" else -2.6/c.RL_ACC_RANGE
+		left_leader, left_l_dis = self._getCloseLeader(traci.vehicle.getLeftLeaders(self.ego, blockingOnly=False))
+		left_l_speed = traci.vehicle.getSpeed(left_leader)/c.NON_RL_VEH_MAX_SPEED if left_leader != "" else 0.01/c.NON_RL_VEH_MAX_SPEED
+		left_l_acc = traci.vehicle.getAccel(left_leader)/c.RL_ACC_RANGE if left_leader != "" else -2.6/c.RL_ACC_RANGE
 
-		right_leader, right_l_dis = self._getCloseLeader(traci.vehicle.getRightLeaders(self.ego, blockingOnly=True))
-		right_l_speed = traci.vehicle.getSpeed(right_leader) if right_leader != "" else 0.01
-		right_l_acc = traci.vehicle.getAccel(right_leader) if right_leader != "" else -2.6
+		right_leader, right_l_dis = self._getCloseLeader(traci.vehicle.getRightLeaders(self.ego, blockingOnly=False))
+		right_l_speed = traci.vehicle.getSpeed(right_leader)/c.NON_RL_VEH_MAX_SPEED if right_leader != "" else 0.01/c.NON_RL_VEH_MAX_SPEED
+		right_l_acc = traci.vehicle.getAccel(right_leader)/c.RL_ACC_RANGE if right_leader != "" else -2.6/c.RL_ACC_RANGE
 
-		states = [ego_speed, ego_accleration, distance, l_speed, l_acc, left_l_dis, left_l_speed, left_l_acc,
-			right_l_dis, right_l_speed, right_l_acc]
+		states = [ego_speed, ego_accleration, ego_heading_angle, distance/c.RL_SENSING_RADIUS, l_speed, l_acc, left_l_dis/c.RL_SENSING_RADIUS, left_l_speed, left_l_acc,
+			right_l_dis/c.RL_SENSING_RADIUS, right_l_speed, right_l_acc]
 		density, mean_speed = self._getLaneDensity()
 		for i in range(self.num_of_lanes):
-			states.append(density[i])
-			states.append(mean_speed[i])
+			states.append(density[i]/c.MAX_LANE_DENSITY)
+			states.append(mean_speed[i]/c.LANE_MEAN_SPEED)
 
 		observations = np.array(states)
 		return observations

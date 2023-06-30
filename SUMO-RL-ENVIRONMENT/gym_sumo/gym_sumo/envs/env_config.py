@@ -6,12 +6,15 @@ RL_ACC_RANGE = 2.6
 RL_DCE_RANGE = 9.0
 MIN_LANE_DENSITY = 0
 MAX_LANE_DENSITY = 100 #this is an assumption for the traffic
+NON_RL_VEH_MAX_SPEED = 30.0
+LANE_MEAN_SPEED = 40.0
+HEADING_ANGLE = 90.0
 
 EGO_ID = "av_0"
 
-W1 = 0.1 # efficiency Reward
-W2 = 0.001 # Collision reward
-W3 = 0.001 # lane change Reward
+W1 = 1.0 # efficiency Reward
+W2 = 1.0 # Collision reward
+W3 = 1.0 # lane change Reward
 
 # SIMULATION STEP
 STEP_LENGTH=0.2
