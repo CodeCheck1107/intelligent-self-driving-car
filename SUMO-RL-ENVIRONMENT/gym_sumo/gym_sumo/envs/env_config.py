@@ -1,6 +1,6 @@
 NUM_OF_LANES = 5
-RL_SENSING_RADIUS = 50.0
-RL_MAX_SPEED_LIMIT = 50.0
+RL_SENSING_RADIUS = 100.0
+RL_MAX_SPEED_LIMIT = 40.24
 RL_MIN_SPEED_LIMIT = 30.0
 RL_ACC_RANGE = 2.6
 RL_DCE_RANGE = 9.0
@@ -12,9 +12,9 @@ HEADING_ANGLE = 90.0
 
 EGO_ID = "av_0"
 
-W1 = 1.0 # efficiency Reward
-W2 = 1.0 # Collision reward
-W3 = 1.0 # lane change Reward
+W1 = 2.0 # efficiency Reward
+W2 = 1.1 # Collision reward
+W3 = 0.01 # lane change Reward
 
 # SIMULATION STEP
-STEP_LENGTH=0.2
+STEP_LENGTH=0.1

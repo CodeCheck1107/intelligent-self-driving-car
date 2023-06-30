@@ -151,9 +151,9 @@ class SumoEnv(gym.Env):
 			target_lane_index = max(current_lane_index-1, 0)
 			traci.vehicle.changeLane(self.ego, target_lane_index, c.STEP_LENGTH)
 		elif action == 3:
-			traci.vehicle.setAcceleration(self.ego,0.2, c.STEP_LENGTH)
+			traci.vehicle.setAcceleration(self.ego,0.15, c.STEP_LENGTH)
 		elif action == 4:
-			traci.vehicle.setAcceleration(self.ego, -0.2, c.STEP_LENGTH)
+			traci.vehicle.setAcceleration(self.ego, -0.3, c.STEP_LENGTH)
 
 
 	def _collision_reward(self):
@@ -164,7 +164,7 @@ class SumoEnv(gym.Env):
 		return 0.0
 	def _efficiency(self):
 		speed = traci.vehicle.getSpeed(self.ego)
-		if speed < self.min_speed_limit:
+		if speed <= self.min_speed_limit:
 			return (speed-self.min_speed_limit)/(self.max_speed_limit-self.min_speed_limit)
 		if speed > self.max_speed_limit:
 			return (self.max_speed_limit-speed)/(self.max_speed_limit-self.min_speed_limit)

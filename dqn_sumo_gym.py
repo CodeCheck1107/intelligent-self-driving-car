@@ -61,23 +61,23 @@ class DQN(nn.Module):
 
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations,256)
-        self.layer2 = nn.Linear(256, 256)
-        # self.layer3 = nn.Linear(32, 64)
-        # self.layer4 = nn.Linear(64, 128)
-        # self.layer5 = nn.Linear(128, 64)
-        # self.layer6 = nn.Linear(64, 32)
-        #self.layer7 = nn.Linear(32,256)
-        self.layer8 = nn.Linear(256,n_actions) 
+        self.layer1 = nn.Linear(n_observations,32)
+        self.layer2 = nn.Linear(32, 64)
+        self.layer3 = nn.Linear(64, 128)
+        self.layer4 = nn.Linear(128, 64)
+        self.layer5 = nn.Linear(64, 32)
+       	# self.layer6 = nn.Linear(64, 32)
+        # self.layer7 = nn.Linear(32,16)
+        self.layer8 = nn.Linear(32,n_actions) 
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        # x = F.relu(self.layer3(x))
-        # x = F.relu(self.layer4(x))
-        # x = F.relu(self.layer5(x))
+        x = F.relu(self.layer3(x))
+        x = F.relu(self.layer4(x))
+        x = F.relu(self.layer5(x))
         # x = F.relu(self.layer6(x))
         # x = F.relu(self.layer7(x))
         return self.layer8(x)
@@ -88,18 +88,19 @@ class Agent(object):
 	def __init__(self, arg, hp=""):
 		super(Agent, self).__init__()
 		self.arg = arg
-		self.batch_size = 64
-		self.gamma = 0.99
+		self.batch_size = 32
+		self.gamma = 0.95
 		self.eps_start = 1.0
 		self.eps_end = 0.1
-		self.eps_decay = 30000
-		self.tau = 5#0.5 # update after 30 episodes
-		self.lr = 3e-5
+		self.eps_decay = 15000
+		self.tau = 0.5 # update after 30 episodes
+		self.lr = 1e-3
 		self.n_actions = 5
 		self.n_observations = 22
 		self.writter = SummaryWriter(comment=str(hp))
 		self.episodic_loss = 0
 		self.episode_durations = []
+		self.eps_threshold=None
 
 		# create network
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
@@ -110,7 +111,7 @@ class Agent(object):
 
 		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=0.01, momentum=0.9)
 		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
-		self.memory = ReplayMemory(200000)
+		self.memory = ReplayMemory(50000)
 
 	def load_model(self, PATH):
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
@@ -121,13 +122,13 @@ class Agent(object):
 		global step_done
 		sample_threshold = random.random()
 		#print(f'Step: {step_done}')
-		eps_threshold = self.eps_end + (self.eps_start-self.eps_end)*math.exp(-1.*step_done/self.eps_decay)
+		self.eps_threshold = self.eps_end + (self.eps_start-self.eps_end)*math.exp(-1.*step_done/self.eps_decay)
 		step_done += 1
 		if evaluation:
 			with torch.no_grad():
 				return self.policy_net(state).max(1)[1].view(1,1)
 
-		if sample_threshold <= eps_threshold and eps_threshold > self.eps_end:
+		if sample_threshold <= self.eps_threshold and self.eps_threshold > self.eps_end:
 			#print(f'Random')
 			return torch.tensor([[np.random.choice(self.n_actions)]], device= device,dtype=torch.long)
 		else:
@@ -170,7 +171,7 @@ class Agent(object):
 		policy_net_state_dict = self.policy_net.state_dict()
 
 		for key in policy_net_state_dict:
-			target_net_state_dict[key] = policy_net_state_dict[key]#*self.tau + target_net_state_dict[key]*(1-self.tau)
+			target_net_state_dict[key] = policy_net_state_dict[key]*self.tau + target_net_state_dict[key]*(1-self.tau)
 		self.target_net.load_state_dict(target_net_state_dict)
 
 	def train_RL(self, env):
@@ -185,7 +186,7 @@ class Agent(object):
 				action = self.select_action(state)
 				observation, reward, terminated, _ = env.step(action.item())
 				r_r += reward
-				reward = torch.tensor([reward/10.0], device=device) # normalized reward between -1.0 to 1.0
+				reward = torch.tensor([reward], device=device) # normalized reward between -1.0 to 1.0
 				done = terminated
 				if terminated:
 					next_state = None
@@ -196,11 +197,12 @@ class Agent(object):
 				state = next_state
 
 				self.learn_model()
-				if(e+1)%self.tau == 0:
-					self.updateTargetNetwork()
+				self.updateTargetNetwork()
+				# if(e+1)%self.tau == 0:
+				# 	self.updateTargetNetwork()
 				if done:
 					env.closeEnvConnection()
-					print(f'Episodes:{e+1}, Reward: {r_r}')
+					print(f'Episodes:{e+1}, Reward: {r_r}, Ep: {self.eps_threshold}')
 					break
 				env.move_gui()
 			if r_r >= max_reward:
