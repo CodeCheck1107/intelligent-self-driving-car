@@ -61,23 +61,23 @@ class DQN(nn.Module):
 
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations,32)
-        self.layer2 = nn.Linear(32, 64)
-        self.layer3 = nn.Linear(64, 128)
-        self.layer4 = nn.Linear(128, 64)
-        self.layer5 = nn.Linear(64, 32)
-       	# self.layer6 = nn.Linear(64, 32)
-        # self.layer7 = nn.Linear(32,16)
-        self.layer8 = nn.Linear(32,n_actions) 
+        self.layer1 = nn.Linear(n_observations,512)
+        self.layer2 = nn.Linear(512, 512)
+        # self.layer3 = nn.Linear(1024, 2048)
+        # self.layer4 = nn.Linear(2048, 1024)
+        # self.layer5 = nn.Linear(1024, 512)
+       	# self.layer6 = nn.Linear(64, 512)
+        # self.layer7 = nn.Linear(512,16)
+        self.layer8 = nn.Linear(512,n_actions) 
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        x = F.relu(self.layer3(x))
-        x = F.relu(self.layer4(x))
-        x = F.relu(self.layer5(x))
+        # x = F.relu(self.layer3(x))
+        # x = F.relu(self.layer4(x))
+        # x = F.relu(self.layer5(x))
         # x = F.relu(self.layer6(x))
         # x = F.relu(self.layer7(x))
         return self.layer8(x)
@@ -91,9 +91,9 @@ class Agent(object):
 		self.batch_size = 32
 		self.gamma = 0.95
 		self.eps_start = 1.0
-		self.eps_end = 0.1
-		self.eps_decay = 15000
-		self.tau = 0.5 # update after 30 episodes
+		self.eps_end = 0.55
+		self.eps_decay = 100000
+		self.tau = 0.005 # update after 30 episodes
 		self.lr = 1e-3
 		self.n_actions = 5
 		self.n_observations = 22
@@ -110,8 +110,8 @@ class Agent(object):
 		self.target_net.train()
 
 		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=0.01, momentum=0.9)
-		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
-		self.memory = ReplayMemory(50000)
+		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr)
+		self.memory = ReplayMemory(500000)
 
 	def load_model(self, PATH):
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
@@ -161,7 +161,7 @@ class Agent(object):
 		loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 		self.episodic_loss += loss
 		loss.backward()
-		#torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
+		torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 1)
 		self.optimizer.step()
 
 	def updateTargetNetwork(self):
@@ -177,8 +177,12 @@ class Agent(object):
 	def train_RL(self, env):
 		max_reward = 0.0
 		for e in range(20000):
-			state, info = env.reset()
+			isGui=False
+			if (e+1)%10 == 0:
+				isGui=True
+			state, info = env.reset(isGui=isGui)
 			r_r = 0
+			clipped_reward = 0
 			time_loss_e = 0
 			state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 			for t in count():
@@ -186,6 +190,9 @@ class Agent(object):
 				action = self.select_action(state)
 				observation, reward, terminated, _ = env.step(action.item())
 				r_r += reward
+				reward_ = np.clip(reward, -1.0,1.0)
+				clipped_reward += reward_
+				#print(f'Reward After Clipped: {reward_} actual: Reward: {reward}')
 				reward = torch.tensor([reward], device=device) # normalized reward between -1.0 to 1.0
 				done = terminated
 				if terminated:
@@ -204,13 +211,14 @@ class Agent(object):
 					env.closeEnvConnection()
 					print(f'Episodes:{e+1}, Reward: {r_r}, Ep: {self.eps_threshold}')
 					break
-				env.move_gui()
-			if r_r >= max_reward:
+				if isGui:
+					env.move_gui()
+			if (e+1)%10 == 0:
 				torch.save(self.policy_net.state_dict(), "models/model_test.pth")
 				max_reward = r_r
 			self.writter.add_scalar("Loss/train", self.episodic_loss, (e+1))
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
-			#self.writter.add_scalar("TimeLoss/Train", time_loss_e, (e+1))
+			self.writter.add_scalar("Clipped Reward/Train", clipped_reward, (e+1))
 			self.writter.flush()
 			self.episodic_loss = 0.0
 		#env.closeEnvConnection()
@@ -221,7 +229,11 @@ class Agent(object):
 		self.load_model("models/model_test.pth")
 		for e in range(10):
 			r_r = 0
-			state, info = env.reset()
+			isGui = True
+			if (e+1)%10==0:
+				isGui=True
+
+			state, info = env.reset(isGui=isGui)
 			state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 			for t in count():
 				#env.render()

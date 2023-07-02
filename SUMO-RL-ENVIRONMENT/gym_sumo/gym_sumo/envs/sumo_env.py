@@ -56,10 +56,10 @@ class SumoEnv(gym.Env):
 	def _getInfo(self):
 		return {"current_episode":0}
 
-	def _startSumo(self):
+	def _startSumo(self, isGui=False):
 		sumoBinary = "sumo"
 		if self.render_mode=="human":
-			sumoBinary = "sumo-gui"
+			sumoBinary = "sumo-gui" if isGui else "sumo"
 		sumoCmd = [sumoBinary, "-c", "SUMO-RL-ENVIRONMENT/gym_sumo/gym_sumo/envs/xml_files/test.sumocfg","--lateral-resolution","3.2",
 		 "--start", "true", "--quit-on-end", "true","--no-warnings","True", "--no-step-log", "True", "--step-length",str(c.STEP_LENGTH),
 		 "--random","false"]
@@ -73,10 +73,10 @@ class SumoEnv(gym.Env):
 		# std = np.std(obs)
 		# X = (obs-mu)/(max(obs)-min(obs))
 		return X
-	def reset(self, seed=None, options=None):
+	def reset(self, isGui=False,seed=None, options=None):
 		super().reset(seed=seed)
 		self.is_collided = False
-		self._startSumo()
+		self._startSumo(isGui=isGui)
 		self._warmup()
 		obs = np.array(self.observation_space.sample()/state_space_high_for_norm)
 		info = self._getInfo()
@@ -141,6 +141,8 @@ class SumoEnv(gym.Env):
 		if self._isEgoRunning() == False:
 			return
 		current_lane_index = traci.vehicle.getLaneIndex(self.ego)
+		accel = traci.vehicle.getAcceleration(self.ego)
+		#print(f'Acceleration: {accel}')
 		if action == 0:
 			# do nothing: stay in the current lane
 			pass
@@ -151,9 +153,9 @@ class SumoEnv(gym.Env):
 			target_lane_index = max(current_lane_index-1, 0)
 			traci.vehicle.changeLane(self.ego, target_lane_index, c.STEP_LENGTH)
 		elif action == 3:
-			traci.vehicle.setAcceleration(self.ego,0.15, c.STEP_LENGTH)
+			traci.vehicle.setAcceleration(self.ego,0.001, c.STEP_LENGTH)
 		elif action == 4:
-			traci.vehicle.setAcceleration(self.ego, -0.3, c.STEP_LENGTH)
+			traci.vehicle.setAcceleration(self.ego, -4.5, c.STEP_LENGTH)
 
 
 	def _collision_reward(self):
@@ -171,7 +173,7 @@ class SumoEnv(gym.Env):
 		return speed/self.max_speed_limit
 	def _lane_change_reward(self,action):
 		if action == 1 or action == 2:
-			return -1.0
+			return 0.0
 		return 0
 
 	def time_loss_reward(self):
@@ -194,7 +196,7 @@ class SumoEnv(gym.Env):
 		observation = self._get_observation()
 		time_loss = self.time_loss_reward()
 		done = self.is_collided or (self._isEgoRunning()==False)
-		if traci.simulation.getTime() > 720:
+		if traci.simulation.getTime() > 420:
 			done = True
 		return (self.mean_normalization(observation), reward, done, {})
 
@@ -214,7 +216,7 @@ class SumoEnv(gym.Env):
 			v_ids_e2 = traci.edge.getLastStepVehicleIDs("E2")
 			if "av_0" in v_ids_e0 or "av_0" in v_ids_e1 or "av_0" in v_ids_e2:
 				traci.vehicle.setLaneChangeMode(self.ego,0)
-				traci.vehicle.setSpeedMode(self.ego,0)
+				#traci.vehicle.setSpeedMode(self.ego,0)
 				return True
 			traci.simulationStep()
 

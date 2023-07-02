@@ -12,9 +12,9 @@ HEADING_ANGLE = 90.0
 
 EGO_ID = "av_0"
 
-W1 = 2.0 # efficiency Reward
-W2 = 1.1 # Collision reward
-W3 = 0.01 # lane change Reward
+W1 = 0.1 # efficiency Reward
+W2 = 0.5 # Collision reward
+W3 = 1.0 # lane change Reward
 
 # SIMULATION STEP
 STEP_LENGTH=0.1
