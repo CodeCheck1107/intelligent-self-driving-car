@@ -173,7 +173,7 @@ class SumoEnv(gym.Env):
 		return speed/self.max_speed_limit
 	def _lane_change_reward(self,action):
 		if action == 1 or action == 2:
-			return 0.0
+			return -1.0
 		return 0
 
 	def time_loss_reward(self):

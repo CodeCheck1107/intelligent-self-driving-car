@@ -62,8 +62,11 @@ class DQN(nn.Module):
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
         self.layer1 = nn.Linear(n_observations,512)
+        torch.nn.init.xavier_uniform(self.layer1.weight)
         self.layer2 = nn.Linear(512, 512)
-        # self.layer3 = nn.Linear(1024, 2048)
+        torch.nn.init.xavier_uniform(self.layer2.weight)
+        self.layer3 = nn.Linear(512, 512)
+        torch.nn.init.xavier_uniform(self.layer3.weight)
         # self.layer4 = nn.Linear(2048, 1024)
         # self.layer5 = nn.Linear(1024, 512)
        	# self.layer6 = nn.Linear(64, 512)
@@ -75,7 +78,7 @@ class DQN(nn.Module):
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        # x = F.relu(self.layer3(x))
+        x = F.relu(self.layer3(x))
         # x = F.relu(self.layer4(x))
         # x = F.relu(self.layer5(x))
         # x = F.relu(self.layer6(x))
@@ -89,11 +92,11 @@ class Agent(object):
 		super(Agent, self).__init__()
 		self.arg = arg
 		self.batch_size = 32
-		self.gamma = 0.95
+		self.gamma = 0.97
 		self.eps_start = 1.0
-		self.eps_end = 0.55
+		self.eps_end = 0.5
 		self.eps_decay = 100000
-		self.tau = 0.005 # update after 30 episodes
+		self.tau = 10#0.005 # update after 30 episodes
 		self.lr = 1e-3
 		self.n_actions = 5
 		self.n_observations = 22
@@ -107,9 +110,9 @@ class Agent(object):
 		self.target_net = DQN(self.n_observations,self.n_actions).to(device)
 		self.policy_net.train()
 		self.target_net.load_state_dict(self.policy_net.state_dict())
-		self.target_net.train()
+		#self.target_net.train()
 
-		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=0.01, momentum=0.9)
+		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=self.lr, momentum=0.9)
 		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr)
 		self.memory = ReplayMemory(500000)
 
@@ -161,7 +164,7 @@ class Agent(object):
 		loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 		self.episodic_loss += loss
 		loss.backward()
-		torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 1)
+		#torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 1)
 		self.optimizer.step()
 
 	def updateTargetNetwork(self):
@@ -173,6 +176,11 @@ class Agent(object):
 		for key in policy_net_state_dict:
 			target_net_state_dict[key] = policy_net_state_dict[key]*self.tau + target_net_state_dict[key]*(1-self.tau)
 		self.target_net.load_state_dict(target_net_state_dict)
+
+	def target_update(self):
+		target_net_state_dict = self.target_net.state_dict()
+		policy_net_state_dict = self.policy_net.state_dict()
+		self.target_net.load_state_dict(policy_net_state_dict)
 
 	def train_RL(self, env):
 		max_reward = 0.0
@@ -193,7 +201,7 @@ class Agent(object):
 				reward_ = np.clip(reward, -1.0,1.0)
 				clipped_reward += reward_
 				#print(f'Reward After Clipped: {reward_} actual: Reward: {reward}')
-				reward = torch.tensor([reward], device=device) # normalized reward between -1.0 to 1.0
+				reward = torch.tensor([reward/10.0], device=device) # normalized reward between -1.0 to 1.0
 				done = terminated
 				if terminated:
 					next_state = None
@@ -203,16 +211,19 @@ class Agent(object):
 				self.memory.push(state, action, next_state, reward)
 				state = next_state
 
-				self.learn_model()
-				self.updateTargetNetwork()
-				# if(e+1)%self.tau == 0:
-				# 	self.updateTargetNetwork()
+				self.learn_model() 
+				#self.updateTargetNetwork() # this is for softupdate
+				if(e+1)%self.tau == 0:
+					self.target_update()
 				if done:
 					env.closeEnvConnection()
 					print(f'Episodes:{e+1}, Reward: {r_r}, Ep: {self.eps_threshold}')
 					break
 				if isGui:
 					env.move_gui()
+			if (1+e) >= 170:
+				self.eps_end = 1.0
+
 			if (e+1)%10 == 0:
 				torch.save(self.policy_net.state_dict(), "models/model_test.pth")
 				max_reward = r_r
