@@ -153,7 +153,7 @@ class SumoEnv(gym.Env):
 			target_lane_index = max(current_lane_index-1, 0)
 			traci.vehicle.changeLane(self.ego, target_lane_index, c.STEP_LENGTH)
 		elif action == 3:
-			traci.vehicle.setAcceleration(self.ego,0.001, c.STEP_LENGTH)
+			traci.vehicle.setAcceleration(self.ego,0.1, c.STEP_LENGTH)
 		elif action == 4:
 			traci.vehicle.setAcceleration(self.ego, -4.5, c.STEP_LENGTH)
 
@@ -196,7 +196,7 @@ class SumoEnv(gym.Env):
 		observation = self._get_observation()
 		time_loss = self.time_loss_reward()
 		done = self.is_collided or (self._isEgoRunning()==False)
-		if traci.simulation.getTime() > 420:
+		if traci.simulation.getTime() > 720:
 			done = True
 		return (self.mean_normalization(observation), reward, done, {})
 

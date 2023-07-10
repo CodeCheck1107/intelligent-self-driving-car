@@ -10,17 +10,18 @@ class DqnNetwork(nn.Module):
 		self.n_observations = N_OBSERVATION
 		self.n_actions = N_ACTION
 
-		self.ln1 = nn.Linear(self.n_observations, 512)
-		self.ln2 = nn.Linear(512,1024)
-		self.ln3 = nn.Linear(1024,2048)
-		self.ln4 = nn.Linear(2048,1024)
-		self.lout = nn.Linear(1024, self.n_actions)
+		self.ln1 = nn.Linear(self.n_observations, 64)
+		torch.nn.init.xavier_uniform_(self.ln1.weight)
+		self.ln2 = nn.Linear(64,128)
+		torch.nn.init.xavier_uniform_(self.ln2.weight)
+		self.ln3 = nn.Linear(128,64)
+		torch.nn.init.xavier_uniform_(self.ln3.weight)
+		self.lout = nn.Linear(64, self.n_actions)
 
 	def forward(self, x):
 		x = F.relu(self.ln1(x))
 		x = F.relu(self.ln2(x))
 		x = F.relu(self.ln3(x))
-		x = F.relu(self.ln4(x))
 		return self.lout(x)
 
 

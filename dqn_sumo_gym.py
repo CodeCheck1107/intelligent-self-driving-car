@@ -38,8 +38,9 @@ if platform.system() == "Windows":
 Transition = namedtuple('Transition', ('state','action','next_state','reward'))
 
 step_done = 0
-random.seed(0)
-np.random.seed(0)
+random.seed(45)
+np.random.seed(45)
+
 
 class ReplayMemory(object):
 	"""docstring for ReplayMemory"""
@@ -61,24 +62,24 @@ class DQN(nn.Module):
 
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations,512)
-        torch.nn.init.xavier_uniform(self.layer1.weight)
-        self.layer2 = nn.Linear(512, 512)
-        torch.nn.init.xavier_uniform(self.layer2.weight)
-        self.layer3 = nn.Linear(512, 512)
-        torch.nn.init.xavier_uniform(self.layer3.weight)
+        self.layer1 = nn.Linear(n_observations,256)
+        torch.nn.init.xavier_uniform_(self.layer1.weight)
+        # self.layer2 = nn.Linear(256, 512)
+        # torch.nn.init.xavier_uniform_(self.layer2.weight)
+        # self.layer3 = nn.Linear(512, 256)
+        # torch.nn.init.xavier_uniform_(self.layer3.weight)
         # self.layer4 = nn.Linear(2048, 1024)
-        # self.layer5 = nn.Linear(1024, 512)
-       	# self.layer6 = nn.Linear(64, 512)
-        # self.layer7 = nn.Linear(512,16)
-        self.layer8 = nn.Linear(512,n_actions) 
+        # self.layer5 = nn.Linear(1024, 64)
+       	# self.layer6 = nn.Linear(64, 64)
+        # self.layer7 = nn.Linear(64,16)
+        self.layer8 = nn.Linear(256,n_actions) 
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        x = F.relu(self.layer3(x))
+        #x = F.relu(self.layer2(x))
+        #x = F.relu(self.layer3(x))
         # x = F.relu(self.layer4(x))
         # x = F.relu(self.layer5(x))
         # x = F.relu(self.layer6(x))
@@ -91,13 +92,13 @@ class Agent(object):
 	def __init__(self, arg, hp=""):
 		super(Agent, self).__init__()
 		self.arg = arg
-		self.batch_size = 32
-		self.gamma = 0.97
+		self.batch_size = 64
+		self.gamma = 0.995
 		self.eps_start = 1.0
-		self.eps_end = 0.5
-		self.eps_decay = 100000
+		self.eps_end = 0.1
+		self.eps_decay = 30000 # 250000
 		self.tau = 10#0.005 # update after 30 episodes
-		self.lr = 1e-3
+		self.lr = 1e-4
 		self.n_actions = 5
 		self.n_observations = 22
 		self.writter = SummaryWriter(comment=str(hp))
@@ -110,11 +111,11 @@ class Agent(object):
 		self.target_net = DQN(self.n_observations,self.n_actions).to(device)
 		self.policy_net.train()
 		self.target_net.load_state_dict(self.policy_net.state_dict())
-		#self.target_net.train()
+		self.target_net.eval()
 
 		#self.optimizer = optim.SGD(self.policy_net.parameters(), lr=self.lr, momentum=0.9)
 		self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr)
-		self.memory = ReplayMemory(500000)
+		self.memory = ReplayMemory(10000)
 
 	def load_model(self, PATH):
 		self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
@@ -184,9 +185,9 @@ class Agent(object):
 
 	def train_RL(self, env):
 		max_reward = 0.0
-		for e in range(20000):
+		for e in range(1000):
 			isGui=False
-			if (e+1)%10 == 0:
+			if (e+1)%100 == 0:
 				isGui=True
 			state, info = env.reset(isGui=isGui)
 			r_r = 0
@@ -201,7 +202,7 @@ class Agent(object):
 				reward_ = np.clip(reward, -1.0,1.0)
 				clipped_reward += reward_
 				#print(f'Reward After Clipped: {reward_} actual: Reward: {reward}')
-				reward = torch.tensor([reward/10.0], device=device) # normalized reward between -1.0 to 1.0
+				reward = torch.tensor([reward], device=device) # normalized reward between -1.0 to 1.0
 				done = terminated
 				if terminated:
 					next_state = None
@@ -221,9 +222,8 @@ class Agent(object):
 					break
 				if isGui:
 					env.move_gui()
-			if (1+e) >= 170:
-				self.eps_end = 1.0
-
+			if e >= 500:
+				self.eps_end = 1.0 
 			if (e+1)%10 == 0:
 				torch.save(self.policy_net.state_dict(), "models/model_test.pth")
 				max_reward = r_r

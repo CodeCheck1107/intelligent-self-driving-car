@@ -9,7 +9,6 @@ MAX_LANE_DENSITY = 100 #this is an assumption for the traffic
 NON_RL_VEH_MAX_SPEED = 30.0
 LANE_MEAN_SPEED = 40.0
 HEADING_ANGLE = 90.0
-
 EGO_ID = "av_0"
 
 W1 = 0.5 # efficiency Reward
@@ -17,4 +16,4 @@ W2 = 0.5 # Collision reward
 W3 = 0.5 # lane change Reward
 
 # SIMULATION STEP
-STEP_LENGTH=0.1
+STEP_LENGTH=0.6

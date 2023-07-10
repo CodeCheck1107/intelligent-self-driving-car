@@ -16,8 +16,9 @@ from itertools import count
 from tqdm import tqdm
 import warnings
 import time
+import math
 warnings.filterwarnings('ignore')
-
+step_done = 0
 class DQNPERAgent(object):
 	"""docstring for DQNPERAgent"""
 	device = 'mps' if torch.backends.mps.is_available() else 'cpu'
@@ -30,9 +31,12 @@ class DQNPERAgent(object):
 		self.policy_net = DqnNetwork().to(self.device)
 		self.target_net = DqnNetwork().to(self.device)
 		self.target_net.load_state_dict(self.policy_net.state_dict())
-		self.epsilon_threshold = EPSILON
+		self.eps_threshold = EPSILON
 		self.writter = SummaryWriter(comment="PER_REPLAY"+process)
 		self.ep_loss = 0.0
+		self.eps_decay = EPSILON_DECAY_RATE
+		self.eps_end = EPSILON_END
+		self.eps_start = EPSILON
 
 		self.optimizer = optim.Adam(self.policy_net.parameters(), lr=LEARNING_RATE)
 		random.seed(SEED)
@@ -57,9 +61,13 @@ class DQNPERAgent(object):
 		self.epsilon_threshold = max(EPSILON_END, EPSILON_DECAY_RATE*self.epsilon_threshold)
 
 	def get_action(self, observation, isTrining=True):
+		global step_done
 		if isTrining:
 			exploit_threshold = random.random()
-			if exploit_threshold <= self.epsilon_threshold:
+			self.eps_threshold = self.eps_end + (self.eps_start-self.eps_end)*math.exp(-1.*step_done/self.eps_decay)
+			#print(f'Eps Threshold: {self.eps_threshold}')
+			step_done += 1
+			if exploit_threshold <= self.eps_threshold and self.eps_threshold > self.eps_end:
 				return np.random.choice(N_ACTION)
 			else:
 				state = torch.FloatTensor(observation).to(self.device)
@@ -109,6 +117,10 @@ class DQNPERAgent(object):
 			target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
 		self.target_net.load_state_dict(target_net_state_dict)
 
+	def target_update(self):
+		target_net_state_dict = self.target_net.state_dict()
+		policy_net_state_dict = self.policy_net.state_dict()
+		self.target_net.load_state_dict(policy_net_state_dict)
 
 	def train_RL(self, env):
 		max_reward = 0.0
@@ -128,9 +140,12 @@ class DQNPERAgent(object):
 				self.learn_policy()
 				env.move_gui()
 			if (e+1)%TARGET_NET_UPDATE_FRE == 0:
-				self.update_target_network()
-			self.reduce_exploration()
-			print(f'Episode: {e+1}/{self.epsilon_threshold} -> Reward: {r_r}')
+				#self.update_target_network()
+				self.target_update()
+			if (e+1)%10 == 0:
+				torch.save(self.policy_net.state_dict(), "models/model_PER_DQN.pth")
+			#self.reduce_exploration()
+			print(f'Episode: {e+1}/{self.eps_threshold} -> Reward: {r_r}')
 			self.writter.add_scalar("Reward/Train", r_r, (e+1))
 			self.writter.add_scalar("Loss/Train", self.ep_loss, (e+1))
 			self.ep_loss = 0.0
