@@ -39,26 +39,26 @@ The state space contains 19 different states of current environment conditions; 
 The reward function consists of a efficiency reward, lane change penalty reward, and a safety reward
 
 <p align="center">
-    <img src="./images/reward.png" withd="100" height="20">
+    <img src="./docs/images/reward.png" withd="100" height="20">
 </p>
 
 ### Efficiency Reward:
 <p align="center">
-    <img src="./images/efficiency_reward.png" width="400" height="80" />
+    <img src="./docs/images/efficiency_reward.png" width="400" height="80" />
 </p>
 
 ### Safety Reward
 <p align="center">
-    <img src="./images/safety.png" width="200" height="45"/>
+    <img src="./docs/images/safety.png" width="200" height="45"/>
 </p>
 
 ### Lane Change Penalty
 <p align="center">
-    <img src="./images/lc_penalty.png" width="200" height="35"/>
+    <img src="./docs/images/lc_penalty.png" width="200" height="35"/>
 </p>
 
 ### Results
 
 #### Training Reward and Loss
-![Loss](./images/results/Loss_train-2.png)![Reward](./images/results/Reward_Train-2.png)
+![Loss](./docs/images/results/Loss_train-2.png)![Reward](./docs/images/results/Reward_Train-2.png)
 
