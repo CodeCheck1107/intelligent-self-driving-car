@@ -1,4 +1,4 @@
-#### RL-Agent (red car) learned deep navigation with intelligent lane change
+#### The RL-Agent (red car) learned deep navigation with intelligent lane change
 ![navigation](./docs/images/results/trimed-value.gif)
 
 # Drive Through Deep - An Intellignet Autonomous agent driving in a densely highway scenario.
